@@ -32,7 +32,7 @@ def layer(op):
 
 class Network(object):
 
-    def __init__(self, inputs, trainable=True, is_training=False):
+    def __init__(self, inputs, n_classes, trainable=True, is_training=False):
         # The input nodes for this network
         self.inputs = inputs
         # The current list of terminal nodes
@@ -45,7 +45,7 @@ class Network(object):
         self.use_dropout = tf.placeholder_with_default(tf.constant(1.0),
                                                        shape=[],
                                                        name='use_dropout')
-        self.setup(is_training)
+        self.setup(n_classes, is_training)
 
     def setup(self, is_training):
         '''Construct the network. '''
@@ -62,7 +62,8 @@ class Network(object):
             with tf.variable_scope(op_name, reuse=True):
                 for param_name, data in data_dict[op_name].iteritems():
                     try:
-                        var = tf.get_variable(param_name)
+                        # var = tf.get_variable(param_name)
+                        var = tf.get_variable(param_name,initializer=tf.contrib.layers.xavier_initializer()) # MG
                         session.run(var.assign(data))
                     except ValueError:
                         if not ignore_missing:
@@ -96,7 +97,8 @@ class Network(object):
 
     def make_var(self, name, shape):
         '''Creates a new TensorFlow variable.'''
-        return tf.get_variable(name, shape, trainable=self.trainable)
+        # return tf.get_variable(name, shape, trainable=self.trainable)
+        return tf.get_variable(name, shape, trainable=self.trainable,initializer=tf.contrib.layers.xavier_initializer()) # MG
 
     def validate_padding(self, padding):
         '''Verifies that the padding is one of the supported ones.'''
@@ -125,6 +127,7 @@ class Network(object):
         # Convolution for a given input and kernel
         convolve = lambda i, k: tf.nn.conv2d(i, k, [1, s_h, s_w, 1], padding=padding)
         with tf.variable_scope(name) as scope:
+            print("Create scope: " + name)
             kernel = self.make_var('weights', shape=[k_h, k_w, c_i / group, c_o])
             if group == 1:
                 # This is the common-case. Convolve the input without any further complications.

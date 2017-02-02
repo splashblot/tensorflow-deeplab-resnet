@@ -2,7 +2,7 @@ from PIL import Image
 import numpy as np
 import tensorflow as tf
 
-n_classes = 21
+# n_classes = 21
 # colour map
 label_colours = [(0,0,0)
                 # 0=background
@@ -17,7 +17,7 @@ label_colours = [(0,0,0)
 # image mean
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
     
-def decode_labels(mask, num_images=1):
+def decode_labels(mask, n_classes, num_images=1):
     """Decode batch of segmentation masks.
     
     Args:
@@ -40,7 +40,7 @@ def decode_labels(mask, num_images=1):
       outputs[i] = np.array(img)
     return outputs
 
-def prepare_label(input_batch, new_size):
+def prepare_label(input_batch, new_size, n_classes):
     """Resize masks and perform one-hot encoding.
 
     Args:

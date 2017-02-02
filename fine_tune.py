@@ -19,15 +19,25 @@ import numpy as np
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, inv_preprocess, prepare_label
 
-n_classes = 21
+# CamVid
+n_classes = 12
+ignore_label = 11
+DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
+DATA_LIST_PATH = '/home/garbade/models/03_CamVid/02_DL_v2_CamVid_ResNet_CRF/camvid/list/train.txt'
+
+# Voc12
+#n_classes = 21
+#DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
+#DATA_LIST_PATH = './dataset/train.txt'
 
 BATCH_SIZE = 4
-DATA_DIRECTORY = '/home/VOCdevkit'
-DATA_LIST_PATH = './dataset/train.txt'
 INPUT_SIZE = '321,321'
 LEARNING_RATE = 1e-4
+LEARNING_RATE_REDUCED = 1e-6
 NUM_STEPS = 20000
-RESTORE_FROM = './deeplab_resnet.ckpt'
+# RESTORE_FROM = './deeplab_tf_model/deeplab_pretrained_bn.ckpt'
+RESTORE_FROM = './deeplab_tf_model/deeplab_init_bn.ckpt'
+SAVE_DIR = './images_finetune/'
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 100
 SNAPSHOT_DIR = './snapshots_finetune/'
@@ -107,7 +117,7 @@ def main():
         image_batch, label_batch = reader.dequeue(args.batch_size)
     
     # Create network.
-    net = DeepLabResNetModel({'data': image_batch}, is_training=args.is_training)
+    net = DeepLabResNetModel({'data': image_batch}, n_classes, is_training=args.is_training)
     # For a small batch size, it is better to keep 
     # the statistics of the BN layers (running means and variances)
     # frozen, and to not update the values provided by the pre-trained model. 
@@ -122,13 +132,18 @@ def main():
     restore_var = tf.global_variables()
     trainable = [v for v in tf.trainable_variables() if 'fc1_voc12' in v.name] # Fine-tune only the last layers.
     
-    prediction = tf.reshape(raw_output, [-1, n_classes])
-    label_proc = prepare_label(label_batch, tf.pack(raw_output.get_shape()[1:3]))
-    gt = tf.reshape(label_proc, [-1, n_classes])
+    prediction = tf.reshape(raw_output, [-1, n_classes]) # Dim = [6724,12] --> 6724 = 41 x 41 x 4 = H x W x N
+    label_proc = prepare_label(label_batch, tf.pack(raw_output.get_shape()[1:3]),n_classes)
+    gt = tf.reshape(label_proc, [-1, n_classes]) # Dim = [6724,12]
+    ### MG edit
+    not_restore = ['fc1_voc12_c0', 'fc1_voc12_c1', 'fc1_voc12_c2', 'fc1_voc12_c3']
+    restore_gist = [v for v in restore_var if not v.name.startswith('fc1_voc12_c')]
+    not_restore_var = [v for v in restore_var if v.name.startswith('fc1_voc12_c')]
     
     # Pixel-wise softmax loss.
-    loss = tf.nn.softmax_cross_entropy_with_logits(prediction, gt)
+    loss = tf.nn.softmax_cross_entropy_with_logits(prediction, gt) # Dim = [6724,1]
     reduced_loss = tf.reduce_mean(loss)
+    tf.summary.histogram("loss_vec", loss) # MG
     
     # Processed predictions.
     raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(image_batch)[1:3,])
@@ -148,12 +163,27 @@ def main():
     # Define loss and optimisation parameters.
     optimiser = tf.train.AdamOptimizer(learning_rate=args.learning_rate)
     optim = optimiser.minimize(reduced_loss, var_list=trainable)
+
+    # Slow optimization for everything but the last layer
+    optimiser_slow = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE_REDUCED) # MG
+    trainable_slow = [v for v in tf.trainable_variables() if not 'fc1_voc12' in v.name]
+    optim_slow = optimiser_slow.minimize(reduced_loss,var_list=trainable_slow)
     
     # Set up tf session and initialize variables. 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
     init = tf.global_variables_initializer()
+    # Log variables
+    summary_writer = tf.summary.FileWriter("./logs/nn_logs", sess.graph) # MG
+    tf.summary.scalar("reduced_loss", reduced_loss) # MG
+    var = [v for v in tf.trainable_variables() if v.name == "res5c_branch2c/weights:0"][0]
+    tf.summary.histogram("bn5c_branch2c/mean_0", var) # MG
+    var = [v for v in tf.trainable_variables() if v.name == "fc1_voc12_c0/weights:0"][0]
+    tf.summary.histogram("fc1_voc12_c0/weights_0", var) # MG
+    var = [v for v in tf.trainable_variables() if v.name == "bn5c_branch2c/BatchNorm/beta:0"][0]
+    tf.summary.histogram("bn5c_branch2c/BatchNorm/beta_0", var) # MG
+    merged_summary_op = tf.summary.merge_all() # MG
     
     sess.run(init)
     
@@ -163,11 +193,15 @@ def main():
     # Load variables if the checkpoint is provided.
     if args.restore_from is not None:
         loader = tf.train.Saver(var_list=restore_var)
+        loader = tf.train.Saver(var_list=restore_gist) # MG
         load(loader, sess, args.restore_from)
     
     # Start queue threads.
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
-        
+
+    # Create path for output images
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
     # Iterate over training steps.
     for step in range(args.num_steps):
         start_time = time.time()
