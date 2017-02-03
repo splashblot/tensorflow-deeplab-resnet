@@ -25,9 +25,19 @@ def read_labeled_image_list(data_dir, data_list):
             image = mask = line.strip("\n")
         images.append(data_dir + image)
         masks.append(data_dir + mask)
-    return images, masks
+    firstImg = images[0] # Get image type
+    if firstImg.endswith('.jpg'):
+        img_type = 1
+        print('Image type is jpg')
+    elif firstImg.endswith('.png'):
+        img_type = 2
+        print('Image type is png')
+    else:
+        print('Error: Wrong image type. Must be either png or jpg')
+    
+    return images, masks, img_type
 
-def read_images_from_disk(input_queue, input_size, random_scale): # optional pre-processing arguments
+def read_images_from_disk(input_queue, input_size, random_scale, img_type): # optional pre-processing arguments
     """Read one image and its corresponding mask with optional pre-processing.
     
     Args:
@@ -43,7 +53,11 @@ def read_images_from_disk(input_queue, input_size, random_scale): # optional pre
     img_contents = tf.read_file(input_queue[0])
     label_contents = tf.read_file(input_queue[1])
     
-    img = tf.image.decode_jpeg(img_contents, channels=3)
+    if img_type == 1:
+        img = tf.image.decode_jpeg(img_contents, channels=3) # VOC12
+    else:
+        img = tf.image.decode_png(img_contents, channels=3) # CamVid
+        
     label = tf.image.decode_png(label_contents, channels=1)
     if input_size is not None:
         h, w = input_size
@@ -84,12 +98,12 @@ class ImageReader(object):
         self.input_size = input_size
         self.coord = coord
         
-        self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.data_list)
+        self.image_list, self.label_list , self.img_type = read_labeled_image_list(self.data_dir, self.data_list)
         self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
         self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
         self.queue = tf.train.slice_input_producer([self.images, self.labels],
                                                    shuffle=input_size is not None) # not shuffling if it is val
-        self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale) 
+        self.image, self.label = read_images_from_disk(self.queue, self.input_size, random_scale, self.img_type) 
 
     def dequeue(self, num_elements):
         '''Pack images and labels into a batch.
