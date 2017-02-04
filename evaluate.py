@@ -21,24 +21,30 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, prepare_label
 OUTPUT_IMGS = False
 
 # CamVid
-#n_classes = 12
-#DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
-#DATA_LIST_PATH = '/home/garbade/datasets/CamVid/list/test_70.txt'
-#DATA_LIST_PATH_ID = '/home/garbade/datasets/CamVid/list/test_id.txt'
-#RESTORE_FROM = './snapshots_finetune/2017-01-31-CamVid_Loss-0-2/model.ckpt-4400'
-#SAVE_DIR = './images_val/voc12/'
+n_classes = 12
+DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
+DATA_LIST_PATH = '/home/garbade/datasets/CamVid/list/test_70.txt'
+DATA_LIST_PATH_ID = '/home/garbade/datasets/CamVid/list/test_id.txt'
+RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/03_SGD_iter40k/snapshots_finetune/model.ckpt-12000'
+SAVE_DIR = '/home/garbade/models_tf/03_CamVid/03_SGD_iter40k/images_val/'
 
 # Voc12
-n_classes = 21
-DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
-DATA_LIST_PATH = './dataset/val.txt'
-DATA_LIST_PATH_ID = '/home/garbade/models/01_voc12/17_DL_v2_ResNet/voc12/list/val_id.txt'
-RESTORE_FROM = '/home/garbade/models_tf/01_voc12/02_finetune_adam/snapshots_finetune/model.ckpt-19900'
-# RESTORE_FROM = './snapshots_finetune/model.ckpt-1400'
-# RESTORE_FROM = './deeplab_tf_model/deeplab_resnet.ckpt'
-SAVE_DIR = './images_val/voc12/'
+# n_classes = 21
+# DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
+# DATA_LIST_PATH = './dataset/val.txt'
+# DATA_LIST_PATH_ID = '/home/garbade/models/01_voc12/17_DL_v2_ResNet/voc12/list/val_id.txt'
+# RESTORE_FROM = '/home/garbade/models_tf/01_voc12/04_A2_sgd_iter40k/snapshots_finetune/model.ckpt-3100'
+# SAVE_DIR = '/home/garbade/models_tf/01_voc12/03_A1_adam_iter40k/images_val/'
 
-
+# Cityscapes (19 classes + BG)
+# n_classes=20
+# ignore_label=255
+# DATA_DIRECTORY='/home/garbade/datasets/cityscapes/'
+# DATA_LIST_PATH='./dataset/city/small_50/val_splt_offst_65.txt'
+# DATA_LIST_PATH_ID='./dataset/city/small_50/val_split_id.txt'
+# TRAIN_SIZE=1000
+# RESTORE_FROM = '/home/garbade/models_tf/05_Cityscapes/02_adam_iter40k//04_A2_sgd_iter40k/snapshots_finetune/model.ckpt-3100'
+# OUTPUT_ROOT='/home/garbade/models_tf/05_Cityscapes/02_adam_iter40k/images_val'
 #NUM_STEPS = 1449 # Number of images in the validation set.
 
 

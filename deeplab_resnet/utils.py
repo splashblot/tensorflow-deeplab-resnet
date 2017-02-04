@@ -58,7 +58,7 @@ def decode_labels_old(mask, n_classes):
     return np.array(img)
 
 
-def prepare_label(input_batch, new_size, n_classes):
+def prepare_label(input_batch, new_size, n_classes, one_hot=True):
     """Resize masks and perform one-hot encoding.
 
     Args:
@@ -72,7 +72,8 @@ def prepare_label(input_batch, new_size, n_classes):
     with tf.name_scope('label_encode'):
         input_batch = tf.image.resize_nearest_neighbor(input_batch, new_size) # as labels are integer numbers, need to use NN interp.
         input_batch = tf.squeeze(input_batch, squeeze_dims=[3]) # reducing the channel dimension.
-        input_batch = tf.one_hot(input_batch, depth=n_classes)
+        if one_hot:
+          input_batch = tf.one_hot(input_batch, depth=n_classes)
     return input_batch
 
 def inv_preprocess(imgs, num_images):
