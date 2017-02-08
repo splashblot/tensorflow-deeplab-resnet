@@ -98,7 +98,13 @@ class Network(object):
     def make_var(self, name, shape):
         '''Creates a new TensorFlow variable.'''
         # return tf.get_variable(name, shape, trainable=self.trainable)
-        return tf.get_variable(name, shape, trainable=self.trainable,initializer=tf.contrib.layers.xavier_initializer()) # MG
+        return tf.get_variable(name, 
+                               shape, 
+                               trainable=self.trainable,
+                               initializer=tf.truncated_normal_initializer(mean=0.0,stddev=0.01))
+                               # initializer=tf.contrib.layers.xavier_initializer_conv2d(uniform=False))
+                               # initializer=tf.contrib.layers.xavier_initializer_conv2d(uniform=False)) # MG: DeeplabPeople sampled from a gaussian for initialization
+                               # initializer=tf.contrib.layers.xavier_initializer()) # MG
 
     def validate_padding(self, padding):
         '''Verifies that the padding is one of the supported ones.'''
@@ -127,7 +133,7 @@ class Network(object):
         # Convolution for a given input and kernel
         convolve = lambda i, k: tf.nn.conv2d(i, k, [1, s_h, s_w, 1], padding=padding)
         with tf.variable_scope(name) as scope:
-            print("Create scope: " + name)
+            # print("Create scope: " + name)
             kernel = self.make_var('weights', shape=[k_h, k_w, c_i / group, c_o])
             if group == 1:
                 # This is the common-case. Convolve the input without any further complications.

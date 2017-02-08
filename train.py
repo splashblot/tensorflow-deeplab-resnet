@@ -25,11 +25,12 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, decod
 SOLVER_MODE = 1
 
 # CamVid
+DATASET = 'CAMVID'
 n_classes = 11
 ignore_label = 10
 DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
 DATA_LIST_PATH = './dataset/camvid/train.txt'
-OUTPUT_ROOT = '/home/garbade/models_tf/03_CamVid/08_mirrorImg/'
+OUTPUT_ROOT = '/home/garbade/models_tf/03_CamVid/12_higherLR/'
 
 
 #### Cityscapes (19 classes + BG)
@@ -37,7 +38,7 @@ OUTPUT_ROOT = '/home/garbade/models_tf/03_CamVid/08_mirrorImg/'
 #ignore_label=18
 #DATA_DIRECTORY='/home/garbade/datasets/cityscapes/'
 #DATA_LIST_PATH='./dataset/city/small_50/train_aug.txt'
-#OUTPUT_ROOT='/home/garbade/models_tf/05_Cityscapes/08_initWithCity/'
+#OUTPUT_ROOT='/home/garbade/models_tf/05_Cityscapes/10_fixedMirrorImgAndScale/'
 
 
 #### voc12
@@ -45,19 +46,24 @@ OUTPUT_ROOT = '/home/garbade/models_tf/03_CamVid/08_mirrorImg/'
 #ignore_label = 20
 #DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
 #DATA_LIST_PATH = './dataset/train.txt'
-#OUTPUT_ROOT='/home/garbade/models_tf/01_voc12/08_initWithCamVid/'
+#OUTPUT_ROOT='/home/garbade/models_tf/01_voc12/10_fixedMirrorImgAndScale/'
 
 BATCH_SIZE = 10
 INPUT_SIZE = '321,321'
-LEARNING_RATE = 2.5e-4
+# LEARNING_RATE = 2.5e-4
+LEARNING_RATE = 2.5e-3
 NUM_STEPS = 20001
 RESTORE_FROM = './deeplab_tf_model/deeplab_resnet_init.ckpt'
+RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/11_moreHistograms/snapshots_finetune/model.ckpt-600'
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 100
 SAVE_DIR = OUTPUT_ROOT + '/images_finetune/'
 SNAPSHOT_DIR = OUTPUT_ROOT + '/snapshots_finetune/'
 LOG_DIR = OUTPUT_ROOT + '/logs/'
 
+
+print('Dataset: ' + DATASET + '\n' + 
+          'Restore from: ' + RESTORE_FROM)
 
 ## OPTIMISATION PARAMS ##
 WEIGHT_DECAY = 0.0005
@@ -213,6 +219,7 @@ def main():
     base_lr = tf.constant(BASE_LR)
     step_ph = tf.placeholder(dtype=tf.float32, shape=())
     learning_rate = tf.scalar_mul(base_lr, tf.pow((1 - step_ph / 20000), POWER))
+    tf.summary.scalar('learning_rate', learning_rate)
 
     if SOLVER_MODE == 1:
         opt_conv = tf.train.MomentumOptimizer(learning_rate, MOMENTUM)
@@ -248,7 +255,7 @@ def main():
     # Log variables
     summary_writer = tf.summary.FileWriter(args.log_dir, sess.graph) # MG
     tf.summary.scalar("reduced_loss", reduced_loss) # MG
-    for v in conv_trainable: # Add histogram to all variables
+    for v in conv_trainable + fc_w_trainable + fc_b_trainable: # Add histogram to all variables
         tf.summary.histogram(v.name.replace(":","_"),v)
     merged_summary_op = tf.summary.merge_all() # MG
     

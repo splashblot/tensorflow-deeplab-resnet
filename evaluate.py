@@ -43,8 +43,8 @@ DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
 DATA_LIST_PATH = '/home/garbade/datasets/CamVid/list/test_70.txt'
 DATA_LIST_PATH_ID = '/home/garbade/datasets/CamVid/list/test_id.txt'
 SAVE_DIR = '/home/garbade/models_tf/03_CamVid/04_nc11_ic10/images_val/'
-RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/09_Batch3/snapshots_finetune/model.ckpt-15200'
-SAVE_DIR = '/home/garbade/models_tf/03_CamVid/09_Batch3/images_val/'
+RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/10_fixedMirrorImgAndScale/snapshots_finetune/model.ckpt-6500'
+SAVE_DIR = '/home/garbade/models_tf/03_CamVid/10_fixedMirrorImgAndScale/images_val/'
 
 
 ### Cityscapes (19 classes + BG)
