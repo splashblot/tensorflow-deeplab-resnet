@@ -37,6 +37,12 @@ def read_labeled_image_list(data_dir, data_list):
     
     return images, masks, img_type
 
+def image_distortions(image, distortions):
+    distort_left_right_random = distortions[0]
+    mirror = tf.less(tf.pack([1.0, distort_left_right_random, 1.0]), 0.5)
+    image = tf.reverse(image, mirror)
+    return image
+    
 def read_images_from_disk(input_queue, input_size, random_scale, img_type): # optional pre-processing arguments
     """Read one image and its corresponding mask with optional pre-processing.
     
@@ -50,6 +56,7 @@ def read_images_from_disk(input_queue, input_size, random_scale, img_type): # op
     Returns:
       Two tensors: the decoded image and its mask.
     """
+    mirror = True # TODO: make this a variable    
     img_contents = tf.read_file(input_queue[0])
     label_contents = tf.read_file(input_queue[1])
     
@@ -70,6 +77,10 @@ def read_images_from_disk(input_queue, input_size, random_scale, img_type): # op
             img = tf.image.resize_images(img, new_shape)
             label = tf.image.resize_nearest_neighbor(tf.expand_dims(label, 0), new_shape)
             label = tf.squeeze(label, squeeze_dims=[0])
+        if mirror:
+            distortions = tf.random_uniform([2], 0, 1.0, dtype=tf.float32)
+            img = image_distortions(img, distortions)
+            label = image_distortions(label, distortions)            
         img = tf.image.resize_image_with_crop_or_pad(img, h, w)
         label = tf.image.resize_image_with_crop_or_pad(label, h, w)
     img_r, img_g, img_b = tf.split(split_dim=2, num_split=3, value=img)

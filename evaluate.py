@@ -12,40 +12,51 @@ import os
 import sys
 import time
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from PIL import Image
+
 import tensorflow as tf
 import numpy as np
 
-from deeplab_resnet import DeepLabResNetModel, ImageReader, prepare_label
+from deeplab_resnet import DeepLabResNetModel, ImageReader, prepare_label, decode_labels, decode_labels_old
 
 
-OUTPUT_IMGS = False
+OUTPUT_IMGS = True
 
-# CamVid
-n_classes = 12
+### Voc12
+#n_classes = 21
+#ignore_label = 20
+#DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
+#DATA_LIST_PATH = './dataset/voc12/val_Bndry255.txt'
+#DATA_LIST_PATH_ID = '/home/garbade/models/01_voc12/17_DL_v2_ResNet/voc12/list/val_id.txt'
+#RESTORE_FROM = '/home/garbade/models_tf/01_voc12/07_LR_fixed/snapshots_finetune/model.ckpt-17400'
+##RESTORE_FROM = './Vladimir/model.ckpt-20000'
+#SAVE_DIR = '/home/garbade/models_tf/01_voc12/07_LR_fixed/images_val/'
+
+
+### CamVid
+n_classes = 11
+ignore_label = 10
 DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
 DATA_LIST_PATH = '/home/garbade/datasets/CamVid/list/test_70.txt'
 DATA_LIST_PATH_ID = '/home/garbade/datasets/CamVid/list/test_id.txt'
-RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/03_SGD_iter40k/snapshots_finetune/model.ckpt-12000'
-SAVE_DIR = '/home/garbade/models_tf/03_CamVid/03_SGD_iter40k/images_val/'
+SAVE_DIR = '/home/garbade/models_tf/03_CamVid/04_nc11_ic10/images_val/'
+RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/09_Batch3/snapshots_finetune/model.ckpt-15200'
+SAVE_DIR = '/home/garbade/models_tf/03_CamVid/09_Batch3/images_val/'
 
-# Voc12
-# n_classes = 21
-# DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
-# DATA_LIST_PATH = './dataset/val.txt'
-# DATA_LIST_PATH_ID = '/home/garbade/models/01_voc12/17_DL_v2_ResNet/voc12/list/val_id.txt'
-# RESTORE_FROM = '/home/garbade/models_tf/01_voc12/04_A2_sgd_iter40k/snapshots_finetune/model.ckpt-3100'
-# SAVE_DIR = '/home/garbade/models_tf/01_voc12/03_A1_adam_iter40k/images_val/'
 
-# Cityscapes (19 classes + BG)
-# n_classes=20
-# ignore_label=255
-# DATA_DIRECTORY='/home/garbade/datasets/cityscapes/'
-# DATA_LIST_PATH='./dataset/city/small_50/val_splt_offst_65.txt'
-# DATA_LIST_PATH_ID='./dataset/city/small_50/val_split_id.txt'
-# TRAIN_SIZE=1000
-# RESTORE_FROM = '/home/garbade/models_tf/05_Cityscapes/02_adam_iter40k//04_A2_sgd_iter40k/snapshots_finetune/model.ckpt-3100'
-# OUTPUT_ROOT='/home/garbade/models_tf/05_Cityscapes/02_adam_iter40k/images_val'
-#NUM_STEPS = 1449 # Number of images in the validation set.
+### Cityscapes (19 classes + BG)
+#n_classes=19
+#ignore_label=18
+#DATA_DIRECTORY='/home/garbade/datasets/cityscapes/'
+#DATA_LIST_PATH='./dataset/city/small_50/val_splt_offst_65.txt'
+#DATA_LIST_PATH_ID='./dataset/city/small_50/val_split_id.txt'
+#TRAIN_SIZE=1000
+#RESTORE_FROM = '/home/garbade/models_tf/05_Cityscapes/07_fixedLR/snapshots_finetune/model.ckpt-17400'
+#SAVE_DIR = '/home/garbade/models_tf/05_Cityscapes/07_fixedLR/images_val/'
+
 
 
 imgList = []
@@ -77,8 +88,12 @@ def get_arguments():
                         help="Number of images in the validation set.")
     parser.add_argument("--restore-from", type=str, default=RESTORE_FROM,
                         help="Where restore model parameters from.")
+    parser.add_argument("--save_dir", type=str, default=SAVE_DIR,
+                        help="Where to save predicted masks.")
     parser.add_argument("--n_classes", type=int, default=n_classes,
-                        help="How many classes to predict (default = 21).")
+                        help="How many classes to predict (default = n_classes).")
+    parser.add_argument("--ignore_label", type=int, default=ignore_label,
+			help="All labels >= ignore_label are beeing ignored")
     return parser.parse_args()
 
 def load(saver, sess, ckpt_path):
@@ -123,10 +138,10 @@ def main():
     pred = tf.expand_dims(raw_output, dim=3) # Create 4-d tensor.
     
     # mIoU
-    pred = tf.reshape(pred, [-1,])
+    pred_lin = tf.reshape(pred, [-1,])
     gt = tf.reshape(label_batch, [-1,])
-    weights = tf.cast(tf.less_equal(gt, 20), tf.int32) # Ignore void label '255'.
-    mIoU, update_op = tf.contrib.metrics.streaming_mean_iou(pred, gt, num_classes=21, weights=weights)
+    weights = tf.cast(tf.less_equal(gt, args.ignore_label), tf.int32) # Ignore void label '255'.
+    mIoU, update_op = tf.contrib.metrics.streaming_mean_iou(pred_lin, gt, num_classes = args.n_classes, weights = weights)
     
     # Set up tf session and initialize variables. 
     config = tf.ConfigProto()
@@ -145,17 +160,18 @@ def main():
     # Start queue threads.
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
     
-    # Iterate over training steps.
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)    # Iterate over training steps.
     for step in range(args.num_steps):
-        preds, _ = sess.run([pred, update_op])
+        preds, preds_lin, _ = sess.run([pred, pred_lin, update_op])
         if step % 100 == 0:
             print('step {:d}'.format(step))
         if OUTPUT_IMGS:
             # print(np.array(preds).shape)
-            msk = decode_labels(np.array(preds)[0, :, :, 0], args.n_classes)
+            msk = decode_labels_old(np.array(preds)[0, :, :, 0], args.n_classes)
             im = Image.fromarray(msk)
             im.save(args.save_dir + imgList[step] + '.png')
-            print('File saved to {}'.format(args.save_dir + imgList[step] + '.png'))
+            # print('File saved to {}'.format(args.save_dir + imgList[step] + '.png'))
     print('Mean IoU: {:.3f}'.format(mIoU.eval(session=sess)))
     coord.request_stop()
     coord.join(threads)

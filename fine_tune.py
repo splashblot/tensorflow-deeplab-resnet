@@ -26,18 +26,27 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, decod
 SOLVER_MODE = 1  
 # SOLVER_MODE = 2
 
-# CamVid
+#### CamVid
 #N_CLASSES = 12
 #ignore_label = 11
 #DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
 #DATA_LIST_PATH = '/home/garbade/models/03_CamVid/02_DL_v2_CamVid_ResNet_CRF/camvid/list/train.txt'
 #TRAIN_SIZE = 400
 
-# Voc12
-N_CLASSES = 21
-DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
-DATA_LIST_PATH = './dataset/train.txt'
-TRAIN_SIZE = 10000
+#### Voc12
+#N_CLASSES = 21
+#DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
+#DATA_LIST_PATH = './dataset/train.txt'
+#TRAIN_SIZE = 10000
+#OUTPUT_ROOT='/home/garbade/models_tf/01_voc12/05_train_new_branch/
+
+#### Cityscapes (19 classes + BG)
+N_CLASSES=20
+ignore_label=255
+DATA_DIRECTORY='/home/garbade/datasets/cityscapes/'
+DATA_LIST_PATH='./dataset/city/small_50/train_aug.txt'
+OUTPUT_ROOT='/home/garbade/models_tf/05_Cityscapes/04_newBranch_finetune'
+TRAIN_SIZE = 3000
 
 
 BATCH_SIZE = 4
@@ -47,10 +56,10 @@ LEARNING_RATE_GIST = 1e-6
 NUM_STEPS = 20000
 # RESTORE_FROM = './deeplab_tf_model/deeplab_resnet.ckpt'
 RESTORE_FROM = './deeplab_tf_model/deeplab_resnet_init.ckpt'
-SAVE_DIR = './images_finetune/'
+SAVE_DIR = OUTPUT_ROOT + './images_finetune/'
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 100
-SNAPSHOT_DIR = './snapshots_finetune_sgd/'
+SNAPSHOT_DIR = OUTPUT_ROOT + './snapshots_finetune_sgd/'
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 def get_arguments():
