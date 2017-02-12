@@ -18,6 +18,8 @@ import numpy as np
 
 from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, prepare_label
 
+IMG_FILE = '~/lena.jpg'
+MODEL_DIR = './deeplab_tf_model/deeplab_resnet.ckpt'
 SAVE_DIR = './output/'
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)
 
@@ -28,9 +30,9 @@ def get_arguments():
       A list of parsed arguments.
     """
     parser = argparse.ArgumentParser(description="DeepLabLFOV Network Inference.")
-    parser.add_argument("img_path", type=str,
+    parser.add_argument("img_path", type=str, default=IMG_FILE,
                         help="Path to the RGB image file.")
-    parser.add_argument("model_weights", type=str,
+    parser.add_argument("model_weights", type=str, default=MODEL_DIR,
                         help="Path to the file with model weights.")
     parser.add_argument("--save-dir", type=str, default=SAVE_DIR,
                         help="Where to save predicted mask.")

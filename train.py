@@ -24,37 +24,42 @@ from deeplab_resnet import DeepLabResNetModel, ImageReader, decode_labels, decod
 
 SOLVER_MODE = 1
 
-# CamVid
+#### CamVid
 DATASET = 'CAMVID'
 n_classes = 11
 ignore_label = 10
 DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
 DATA_LIST_PATH = './dataset/camvid/train.txt'
-OUTPUT_ROOT = '/home/garbade/models_tf/03_CamVid/12_higherLR/'
+OUTPUT_ROOT = '/home/garbade/models_tf/03_CamVid/16_fixedRandomCropping/'
+#RESTORE_FROM = './deeplab_tf_model/deeplab_resnet_init.ckpt'
 
 
 #### Cityscapes (19 classes + BG)
+# DATASET = 'CITY'
 #n_classes=19
 #ignore_label=18
 #DATA_DIRECTORY='/home/garbade/datasets/cityscapes/'
 #DATA_LIST_PATH='./dataset/city/small_50/train_aug.txt'
 #OUTPUT_ROOT='/home/garbade/models_tf/05_Cityscapes/10_fixedMirrorImgAndScale/'
-
+#RESTORE_FROM = './deeplab_tf_model/deeplab_resnet_init.ckpt'
 
 #### voc12
+# DATASET = 'VOC2012'
 #n_classes = 21
 #ignore_label = 20
 #DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
-#DATA_LIST_PATH = './dataset/train.txt'
+#DATA_LIST_PATH = './dataset/voc12/train.txt'
 #OUTPUT_ROOT='/home/garbade/models_tf/01_voc12/10_fixedMirrorImgAndScale/'
+#RESTORE_FROM = './deeplab_tf_model/deeplab_resnet_init.ckpt'
+
+
 
 BATCH_SIZE = 10
 INPUT_SIZE = '321,321'
-# LEARNING_RATE = 2.5e-4
-LEARNING_RATE = 2.5e-3
+LEARNING_RATE = 2.5e-4
+#LEARNING_RATE = 2.5e-3
 NUM_STEPS = 20001
-RESTORE_FROM = './deeplab_tf_model/deeplab_resnet_init.ckpt'
-RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/11_moreHistograms/snapshots_finetune/model.ckpt-600'
+
 SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 100
 SAVE_DIR = OUTPUT_ROOT + '/images_finetune/'
@@ -154,7 +159,7 @@ def main():
             args.data_dir,
             args.data_list,
             input_size,
-            args.random_scale,
+            'train',    # phase is either 'train', 'val' or 'test'
             coord)
         image_batch, label_batch = reader.dequeue(args.batch_size)
     
@@ -182,11 +187,11 @@ def main():
     
     vars_restore_gist = [v for v in tf.global_variables() if not 'fc' in v.name] # Restore everything but last layer
     
-    ## IGNORE 255 ##
+    ## TODO: Here everything below n_classes is being ignored  -> match this with ingnoer_label = 255 -> IGNORE 255 ##
     raw_prediction = tf.reshape(raw_output, [-1, args.n_classes])
     label_proc = prepare_label(label_batch, tf.pack(raw_output.get_shape()[1:3]),args.n_classes, one_hot=False) # [batch_size, h, w]
     raw_gt = tf.reshape(label_proc, [-1,])
-    indices = tf.squeeze(tf.where(tf.less_equal(raw_gt, args.ignore_label)), 1)
+    indices = tf.squeeze(tf.where(tf.less_equal(raw_gt, args.n_classes - 1)), 1)
     gt = tf.cast(tf.gather(raw_gt, indices), tf.int32)
     prediction = tf.gather(raw_prediction, indices)
                                                   

@@ -20,31 +20,35 @@ from PIL import Image
 import tensorflow as tf
 import numpy as np
 
+# from deeplab_resnet import DeepLabResNetModel, ImageReader, prepare_label, decode_labels, decode_labels_old
 from deeplab_resnet import DeepLabResNetModel, ImageReader, prepare_label, decode_labels, decode_labels_old
+
 
 
 OUTPUT_IMGS = True
 
 ### Voc12
-#n_classes = 21
-#ignore_label = 20
-#DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
-#DATA_LIST_PATH = './dataset/voc12/val_Bndry255.txt'
-#DATA_LIST_PATH_ID = '/home/garbade/models/01_voc12/17_DL_v2_ResNet/voc12/list/val_id.txt'
-#RESTORE_FROM = '/home/garbade/models_tf/01_voc12/07_LR_fixed/snapshots_finetune/model.ckpt-17400'
-##RESTORE_FROM = './Vladimir/model.ckpt-20000'
-#SAVE_DIR = '/home/garbade/models_tf/01_voc12/07_LR_fixed/images_val/'
+n_classes = 21
+ignore_label = 20
+DATA_DIRECTORY = '/home/garbade/datasets/VOC2012/'
+DATA_LIST_PATH = './dataset/voc12/val_Bndry255.txt'
+DATA_LIST_PATH_ID = './dataset/voc12/val_id.txt'
+RESTORE_FROM = '/home/garbade/models_tf/01_voc12/14_fixedRandomCropping/snapshots_finetune/model.ckpt-20000'
+#RESTORE_FROM = './Vladimir/model.ckpt-20000'
+SAVE_DIR = '/home/garbade/models_tf/01_voc12/14_fixedRandomCropping/images_val/'
 
 
 ### CamVid
-n_classes = 11
-ignore_label = 10
-DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
-DATA_LIST_PATH = '/home/garbade/datasets/CamVid/list/test_70.txt'
-DATA_LIST_PATH_ID = '/home/garbade/datasets/CamVid/list/test_id.txt'
-SAVE_DIR = '/home/garbade/models_tf/03_CamVid/04_nc11_ic10/images_val/'
-RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/10_fixedMirrorImgAndScale/snapshots_finetune/model.ckpt-6500'
-SAVE_DIR = '/home/garbade/models_tf/03_CamVid/10_fixedMirrorImgAndScale/images_val/'
+#n_classes = 11
+#ignore_label = 255
+#DATA_DIRECTORY = '/home/garbade/datasets/CamVid/'
+## DATA_LIST_PATH = './dataset/camvid/test_70.txt'
+#DATA_LIST_PATH = './dataset/camvid/test.txt'
+#DATA_LIST_PATH_ID = './dataset/camvid/test_id.txt'
+#SAVE_DIR = '/home/garbade/models_tf/03_CamVid/14_fixedRandomCropping/images_val_full/'
+## RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/12_higherLR/snapshots_finetune/model.ckpt-6600'
+#RESTORE_FROM = '/home/garbade/models_tf/03_CamVid/14_fixedRandomCropping/snapshots_finetune/model.ckpt-20000'
+
 
 
 ### Cityscapes (19 classes + BG)
@@ -54,8 +58,8 @@ SAVE_DIR = '/home/garbade/models_tf/03_CamVid/10_fixedMirrorImgAndScale/images_v
 #DATA_LIST_PATH='./dataset/city/small_50/val_splt_offst_65.txt'
 #DATA_LIST_PATH_ID='./dataset/city/small_50/val_split_id.txt'
 #TRAIN_SIZE=1000
-#RESTORE_FROM = '/home/garbade/models_tf/05_Cityscapes/07_fixedLR/snapshots_finetune/model.ckpt-17400'
-#SAVE_DIR = '/home/garbade/models_tf/05_Cityscapes/07_fixedLR/images_val/'
+#RESTORE_FROM = '/home/garbade/models_tf/05_Cityscapes/14_fixedRandomCropping/snapshots_finetune/model.ckpt-20000'
+#SAVE_DIR = '/home/garbade/models_tf/05_Cityscapes/14_fixedRandomCropping/images_val/'
 
 
 
@@ -120,7 +124,7 @@ def main():
             args.data_dir,
             args.data_list,
             None, # No defined input size.
-            False, # No random scale.
+            'test', # phase 'train', 'valid' or 'test'
             coord)
         image, label = reader.image, reader.label
     image_batch, label_batch = tf.expand_dims(image, dim=0), tf.expand_dims(label, dim=0) # Add one batch dimension.
@@ -140,7 +144,7 @@ def main():
     # mIoU
     pred_lin = tf.reshape(pred, [-1,])
     gt = tf.reshape(label_batch, [-1,])
-    weights = tf.cast(tf.less_equal(gt, args.ignore_label), tf.int32) # Ignore void label '255'.
+    weights = tf.cast(tf.less_equal(gt, args.n_classes - 1), tf.int32) # TODO: Includ n_classes -1 ->Ignore void label '255'.
     mIoU, update_op = tf.contrib.metrics.streaming_mean_iou(pred_lin, gt, num_classes = args.n_classes, weights = weights)
     
     # Set up tf session and initialize variables. 

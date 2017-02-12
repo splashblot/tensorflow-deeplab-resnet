@@ -15,6 +15,7 @@ import numpy as np
 from deeplab_resnet import DeepLabResNetModel
 
 SAVE_DIR = './'
+n_classes = 11
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -27,6 +28,10 @@ def get_arguments():
                         help="Path to the .npy file, which contains the weights.")
     parser.add_argument("--save-dir", type=str, default=SAVE_DIR,
                         help="Where to save the converted .ckpt file.")
+    parser.add_argument("--n_classes", type=int, default=n_classes,
+                        help="Number of classes.")
+    parser.add_argument("--is-training", action="store_true",
+                        help="Whether to updates the running means and variances during the training.")                        
     return parser.parse_args()
 
 def save(saver, sess, logdir):
@@ -47,7 +52,8 @@ def main():
     # Default image.
     image_batch = tf.constant(0, tf.float32, shape=[1, 321, 321, 3]) 
     # Create network.
-    net = DeepLabResNetModel({'data': image_batch})
+    net = DeepLabResNetModel({'data': image_batch},args.n_classes, is_training=args.is_training)
+    
     var_list = tf.global_variables()
           
     # Set up tf session and initialize variables. 
